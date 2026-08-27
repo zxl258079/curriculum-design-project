@@ -1,0 +1,38 @@
+{
+    "stage": "stage1",
+    "task_title": "仓库初始化、文档编写、数据集预处理上传",
+    "chat_records": [
+        {
+            "role": "user",
+            "content": "本阶段考核内容：1.github账号创建 2.github中创建课程设计的代码仓库 3.向代码仓库推送学习笔记，毕业内容需包括对AI工具的学习，拟选用的harness和模型，git原理功能，选题调研等内容。命名为“学习笔记.md”，注意要求markdown格式。"
+        },
+        {
+            "role": "assistant",
+            "content": "提供完整Markdown学习笔记文档，覆盖Git原理、选题调研、AI工具学习、模型选型，同时给出全套Git推送操作指令。"
+        },
+        {
+            "role": "user",
+            "content": "仓库主页需要展示README简介文本，区分README.md和学习笔记.md两份独立文档。"
+        },
+        {
+            "role": "assistant",
+            "content": "讲解README存放位置要求，排查子文件夹嵌套造成主页无法渲染的故障，提供README正文内容与提交备注。"
+        },
+        {
+            "role": "user",
+            "content": "需要把C‑MAPSS FD001相关数据文件添加到项目仓库中的data目录。原始资源为txt格式，需要转换成csv格式。"
+        },
+        {
+            "role": "assistant",
+            "content": "给出Python转换脚本，分步讲解脚本保存、运行的操作，指导网页端上传三份csv文件至data目录，提供对应的提交备注。"
+        },
+        {
+            "role": "user",
+            "content": "prompt目录，将与AI交流的记录(通常是json文件)添加到这个目录下，并在之后的每个阶段同步更新，注意要在上下文压缩前及时备份prompt记录并添加。"
+        },
+        {
+            "role": "assistant",
+            "content": "说明prompt文件夹用途，给出文件命名规范，输出可直接复制使用的阶段交互记录JSON模板。"
+        }
+    ]
+}
