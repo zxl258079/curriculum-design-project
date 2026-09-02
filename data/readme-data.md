@@ -4,7 +4,7 @@
 数据集全称：IMS‑Rexnord Bearing Dataset
 发布机构：University of Cincinnati, Intelligent Maintenance Systems (IMS) 中心，Rexnord公司合作
 官方镜像地址：https://data.nist.gov/od/id/mds2-13WL-B74Z
-
+数据集下载：https://blog.csdn.net/ynn4818172/article/details/113914718
 >重要声明：
 本项目**未选用C‑MAPSS、AI4I‑2020、NEU、CWRU**等已被本组其他同学选用的数据集，规避选题重复。
 
