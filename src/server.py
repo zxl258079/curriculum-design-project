@@ -1,112 +1,122 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 import sqlite3
-import numpy as np
 import torch
+import numpy as np
 import os
 
 app = Flask(__name__)
-db_path = "../output/rul_system.db"
 
-# --------模型加载，和你现有项目保持一致--------
-feature_num = 21
-window_size = 30
+DB_PATH = "../output/rul_system.db"
+MODEL_PATH = "../output/model.pth"
+SCALER_PATH = "../output/y_scale.npz"
 
-class LstmRUL(torch.nn.Module):
-    def __init__(self, input_size, hidden_size=64):
-        super().__init__()
-        self.lstm = torch.nn.LSTM(input_size, hidden_size, batch_first=True)
-        self.fc = torch.nn.Linear(hidden_size,1)
-    def forward(self,x):
-        out,_ = self.lstm(x)
-        last = out[:,-1,:]
-        return self.fc(last)
 
-model = LstmRUL(feature_num,64)
-model_weight_path = "../output/model.pth"
-if os.path.exists(model_weight_path):
-    model.load_state_dict(torch.load(model_weight_path,map_location=torch.device("cpu")))
-model.eval()
+def get_db_conn():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# 运维建议阈值
-def get_suggestion(rul):
-    if rul>80:
-        return "设备健康，正常运行，常规巡检"
-    elif 30<rul<=80:
-        return "状态下降，增加巡检频次，密切监控传感器数据"
-    else:
-        return "剩余寿命不足，建议停机开展维护检修"
 
-# ----------------API接口----------------
-@app.route("/api/upload_data",methods=["POST"])
-def upload_data():
-    """模拟上传设备与传感器数据"""
+# 首页网页路由
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+
+# 1.录入设备
+@app.route("/api/add_device", methods=["POST"])
+def add_device():
     data = request.get_json()
-    equip_name = data.get("equip_name","涡轮发动机‑001")
-    equip_type = data.get("equip_type","航空涡轮发动机")
-
-    conn = sqlite3.connect(db_path)
+    equip_name = data.get("equip_name", "")
+    equip_model = data.get("equip_model", "")
+    if not equip_name:
+        return jsonify({"code": -1, "msg": "设备名称不能为空"}), 400
+    conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute("INSERT INTO equipment_info(equip_name,equip_type) VALUES (?,?)",(equip_name,equip_type))
-    equip_id = cur.lastrowid
+    cur.execute("INSERT INTO device(equip_name,equip_model,create_time) VALUES(?,?,datetime('now'))",
+                (equip_name, equip_model))
     conn.commit()
+    equip_id = cur.lastrowid
     conn.close()
-    return jsonify({"code":0,"msg":"设备信息入库成功","equip_id":equip_id})
+    return jsonify({"code": 0, "equip_id": equip_id, "msg": "设备录入成功"})
 
 
-@app.route("/api/predict_rul",methods=["POST"])
+# 2.RUL预测接口
+@app.route("/api/predict_rul", methods=["POST"])
 def predict_rul():
-    """执行RUL预测"""
     req = request.get_json()
     equip_id = req.get("equip_id")
-    sample_np = np.array(req["sample"],dtype=np.float32)
-    tensor_x = torch.from_numpy(sample_np).float()
+    sample = req.get("sample")
+    if equip_id is None or sample is None:
+        return jsonify({"code": -1, "msg": "参数缺失"}),400
 
+    # 加载模型与归一化参数
+    if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
+        return jsonify({"code":-2,"msg":"模型文件不存在，请先运行train.py训练模型"}),500
+
+    checkpoint = torch.load(MODEL_PATH, map_location=torch.device("cpu"))
+    model = checkpoint["model"]
+    model.eval()
+    scale_data = np.load(SCALER_PATH, allow_pickle=True)
+    y_mean = scale_data["y_mean"]
+    y_std = scale_data["y_std"]
+
+    input_tensor = torch.tensor(sample, dtype=torch.float32)
     with torch.no_grad():
-        pred_norm = model(tensor_x).item()
-    pred_rul = pred_norm * 130
-    suggestion = get_suggestion(pred_rul)
+        pred_norm = model(input_tensor)
+    pred_norm_val = float(pred_norm.numpy()[0][0])
+    pred_rul = pred_norm_val * y_std + y_mean
 
-    conn = sqlite3.connect(db_path)
+    # 生成运维建议
+    if pred_rul <= 30:
+        suggestion = "剩余寿命较低，建议立即停机检修"
+    elif pred_rul <= 80:
+        suggestion = "进入预警区间，建议加强巡检，择机维护"
+    else:
+        suggestion = "设备状态良好，继续正常运行"
+
+    # 写入数据库
+    conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute('''
-    INSERT INTO predict_record(equip_id,predict_rul,suggestion) VALUES (?,?,?)
-    ''',(equip_id,pred_rul,suggestion))
+    cur.execute("INSERT INTO predict_record(equip_id,rul_result,suggestion,predict_time) VALUES(?,?,?,datetime('now'))",
+                (equip_id, float(pred_rul), suggestion))
     conn.commit()
     conn.close()
 
     return jsonify({
         "code":0,
-        "predict_norm":round(pred_norm,4),
-        "predict_rul":round(pred_rul,2),
-        "suggestion":suggestion
+        "predict_rul": round(float(pred_rul),2),
+        "predict_norm": round(pred_norm_val,4),
+        "suggestion": suggestion
     })
 
 
-@app.route("/api/get_history",methods=["GET"])
+# 3.查询历史记录
+@app.route("/api/get_history", methods=["GET"])
 def get_history():
     equip_id = request.args.get("equip_id")
-    conn = sqlite3.connect(db_path)
+    if equip_id is None:
+        return jsonify({"code":-1,"msg":"缺少equip_id"}),400
+    conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute('''
-    SELECT pr.id,ei.equip_name,pr.predict_rul,pr.suggestion,pr.create_time
-    FROM predict_record pr
-    LEFT JOIN equipment_info ei ON pr.equip_id=ei.id
-    WHERE pr.equip_id=?
-    ORDER BY pr.create_time DESC
-    ''',(equip_id,))
+    cur.execute("""
+        SELECT r.id as record_id,d.equip_name,r.rul_result,r.suggestion,r.predict_time
+        FROM predict_record r LEFT JOIN device d ON r.equip_id=d.equip_id
+        WHERE r.equip_id=? ORDER BY r.predict_time DESC
+    """,(equip_id,))
     rows = cur.fetchall()
-    conn.close()
     res = []
-    for r in rows:
+    for row in rows:
         res.append({
-            "record_id":r[0],
-            "equip_name":r[1],
-            "predict_rul":r[2],
-            "suggestion":r[3],
-            "time":r[4]
+            "record_id":row["record_id"],
+            "equip_name":row["equip_name"],
+            "predict_rul":row["rul_result"],
+            "suggestion":row["suggestion"],
+            "time":row["predict_time"]
         })
+    conn.close()
     return jsonify({"code":0,"data":res})
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1",port=5000,debug=False)
+    app.run(host="127.0.0.1", port=5000, debug=True)
