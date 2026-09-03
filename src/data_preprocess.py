@@ -5,7 +5,7 @@ from sklearn.preprocessing import StandardScaler
 
 def load_data(file_path):
     col_names = ["engine_id","cycle","setting1","setting2","setting3"] + [f"s{i}" for i in range(1,24)]
-    df = pd.read_csv(file_path, names=col_names, index_col=False)
+    df = pd.read_csv(file_path, sep=r'\s+', names=col_names, index_col=False)
     return df
 
 def sliding_window(data,window_size=30):
@@ -23,7 +23,7 @@ def sliding_window(data,window_size=30):
 
 if __name__ == "__main__":
     data_dir = "../data"
-    train_raw = load_data(os.path.join(data_dir,"train_FD001.csv"))
+    train_raw = load_data(os.path.join(data_dir,"train_FD001.txt"))
 
     #构造RUL标签
     max_cycle = train_raw.groupby("engine_id")["cycle"].max()
