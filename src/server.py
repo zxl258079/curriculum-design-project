@@ -17,7 +17,7 @@ def get_db_conn():
     return conn
 
 
-# 首页网页路由
+# 网页首页路由
 @app.route("/")
 def index():
     return render_template("index.html")
