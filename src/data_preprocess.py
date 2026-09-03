@@ -23,7 +23,7 @@ def sliding_window(data,window_size=30):
 
 if __name__ == "__main__":
     data_dir = "../data"
-    train_raw = load_data(os.path.join(data_dir,"train_FD001.txt"))
+    train_raw = load_data(os.path.join(data_dir,"train_FD001.csv"))
 
     #构造RUL标签
     max_cycle = train_raw.groupby("engine_id")["cycle"].max()
