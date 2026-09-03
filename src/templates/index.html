@@ -1,125 +1,99 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh‑CN">
 <head>
-    <meta charset="UTF-8">
-    <title>航空发动机RUL智能预测系统</title>
-    <style>
-        body{font-family:Microsoft YaHei;margin:20px;background:#e8f4ff;}
-        .box{background:#fff;padding:20px;border-radius:8px;margin-bottom:15px;box-shadow:0 1px 4px #ccc;}
-        input{padding:8px;width:260px;margin:6px 0;border:1px solid #aaa;border-radius:4px;}
-        button{padding:8px 16px;border:none;border-radius:4px;color:#fff;cursor:pointer;}
-        .btn-blue{background:#2b78e4;}
-        .btn-green{background:#28a745;}
-        .btn-yellow{background:#f0ad4e;color:#222;}
-        .tip{margin-top:8px;color:#226622;}
-        table{width:100%;border-collapse:collapse;margin-top:10px;}
-        th,td{border:1px solid #ccc;padding:8px;text-align:center;}
-    </style>
+<meta charset="UTF‑8">
+<title>IMS轴承剩余寿命预测系统</title>
+<style>
+*{box‑sizing:border‑box;font‑family:Microsoft Yahei;}
+body{max‑width:900px;margin:30px auto;padding:0 20px;}
+.box{border:1px solid #ccc;padding:16px;margin‑bottom:20px;border‑radius:8px;}
+input{padding:8px;width:260px;margin:6px 0;}
+button{padding:8px 16px;background:#2385bb;color:#fff;border:none;border‑radius:4px;cursor:pointer;}
+table{width:100%;border‑collapse:collapse;margin‑top:10px;}
+th,td{border:1px solid #aaa;padding:8px;text‑align:center;}
+th{background:#eee;}
+</style>
 </head>
 <body>
-<h1 style="text-align:center;">航空发动机剩余寿命RUL智能预测系统</h1>
+<h1>IMS轴承剩余寿命RUL预测系统</h1>
 
 <div class="box">
-    <h3>1.设备信息录入</h3>
-    <div>
-        <label>设备名称</label><br>
-        <input id="equip_name" placeholder="请输入设备名称"><br>
-        <label>设备型号</label><br>
-        <input id="equip_model" placeholder="请输入设备型号"><br>
-        <button id="btn_add" class="btn-blue">录入设备</button>
-        <div class="tip" id="add_tip"></div>
-    </div>
+<h3>1.设备信息录入</h3>
+<div>设备名称：<input id="equip_name" placeholder="输入设备名称"></div>
+<div>设备型号：<input id="equip_model" placeholder="输入设备型号"></div>
+<button onclick="addDevice()">录入设备</button>
+<div id="add_res"></div>
 </div>
 
 <div class="box">
-    <h3>2.剩余寿命RUL智能预测</h3>
-    <div>
-        <label>设备编号</label><br>
-        <input id="predict_device_id" placeholder="输入设备编号"><br>
-        <button id="btn_predict" class="btn-green">执行智能预测</button>
-        <div class="tip" id="predict_tip"></div>
-    </div>
+<h3>2.剩余寿命预测</h3>
+<div>设备编号：<input id="dev_id" placeholder="填入设备编号"></div>
+<button onclick="doPredict()">执行预测</button>
+<div id="pred_res"></div>
 </div>
 
 <div class="box">
-    <h3>3.历史预测记录查询</h3>
-    <div>
-        <label>设备编号</label><br>
-        <input id="query_device_id" placeholder="输入设备编号(留空查全部)"><br>
-        <button id="btn_query" class="btn-yellow">查询历史记录</button>
-        <div id="table_wrap"></div>
-    </div>
+<h3>3.历史记录查询</h3>
+<div>设备编号(留空查全部)：<input id="q_dev_id" placeholder="留空查询全部"></div>
+<button onclick="queryHistory()">查询</button>
+<div id="history_box"></div>
 </div>
 
 <script>
-//录入设备
-document.querySelector("#btn_add").addEventListener("click",async ()=>{
-    const name=document.querySelector("#equip_name").value.trim();
-    const model=document.querySelector("#equip_model").value.trim();
-    const tip=document.querySelector("#add_tip");
-    if(!name){tip.innerText="请填写设备名称";return;}
-    const res=await fetch("/api/add_device",{
+const base="/api";
+
+async function addDevice(){
+    const name=document.getElementById("equip_name").value.trim();
+    const model=document.getElementById("equip_model").value.trim();
+    const res=await fetch(base+"/add_device",{
         method:"POST",
-        headers:{
-            "Content-Type":"application/json"
-        },
+        headers:{"Content‑Type":"application/json"},
         body:JSON.stringify({equip_name:name,equip_model:model})
     });
-    const data=await res.json();
-    if(data.code===0){
-        tip.innerText=`设备录入成功，设备编号：${data.device_id}`;
-    }else{
-        tip.innerText=`录入失败：${data.msg}`;
-    }
-});
+    const json=await res.json();
+    document.getElementById("add_res").innerText="录入成功，设备编号："+json.device_id;
+}
 
-//执行预测
-document.querySelector("#btn_predict").addEventListener("click",async ()=>{
-    const devId=document.querySelector("#predict_device_id").value.trim();
-    const tip=document.querySelector("#predict_tip");
-    if(!devId){tip.innerText="请输入设备编号";return;}
-    const res=await fetch("/api/predict_rul",{
+async function doPredict(){
+    const devId=document.getElementById("dev_id").value.trim();
+    const res=await fetch(base+"/predict_rul",{
         method:"POST",
-        headers:{
-            "Content-Type":"application/json"
-        },
-        body:JSON.stringify({device_id:devId})
+        headers:{"Content‑Type":"application/json"},
+        body:JSON.stringify({device_id:Number(devId)})
     });
-    const data=await res.json();
-    if(data.code===0){
-        tip.innerText=`预测RUL：${data.data.pred_rul}，健康状态：${data.data.health_status}，运维建议：${data.data.advice}`;
-    }else{
-        tip.innerText=`预测失败：${data.msg}`;
-    }
-});
+    const json=await res.json();
+    const html=`
+预测RUL：${json.rul}<br>
+健康状态：${json.health_status}<br>
+运维建议：${json.advice}
+`;
+    document.getElementById("pred_res").innerHTML=html;
+}
 
-//查询历史
-document.querySelector("#btn_query").addEventListener("click",async ()=>{
-    const devId=document.querySelector("#query_device_id").value.trim();
-    const wrap=document.querySelector("#table_wrap");
-    const res=await fetch("/api/query_history",{
+async function queryHistory(){
+    const devId=document.getElementById("q_dev_id").value.trim();
+    const bodyObj= devId ? {device_id:Number(devId)} : {};
+    const res=await fetch(base+"/query_history",{
         method:"POST",
-        headers:{
-            "Content-Type":"application/json"
-        },
-        body:JSON.stringify({device_id:devId})
+        headers:{"Content‑Type":"application/json"},
+        body:JSON.stringify(bodyObj)
     });
-    const data=await res.json();
-    if(data.code!==0){wrap.innerText=`查询失败：${data.msg}`;return;}
-    let html=`<table><tr><th>记录ID</th><th>设备名称</th><th>预测RUL</th><th>健康状态</th><th>运维建议</th><th>预测时间</th></tr>`;
-    for(let r of data.data){
+    const json=await res.json();
+    let html="<table><tr><th>ID</th><th>设备名称</th><th>型号</th><th>RUL</th><th>健康状态</th><th>运维建议</th><th>时间</th></tr>";
+    json.data.forEach(item=>{
         html+=`<tr>
-            <td>${r.id}</td>
-            <td>${r.equip_name}</td>
-            <td>${r.pred_rul}</td>
-            <td>${r.health_status}</td>
-            <td>${r.advice}</td>
-            <td>${r.predict_time}</td>
-        </tr>`;
-    }
-    html+=`</table>`;
-    wrap.innerHTML=html;
-});
+<td>${item.id}</td>
+<td>${item.equip_name}</td>
+<td>${item.equip_model}</td>
+<td>${item.pred_rul}</td>
+<td>${item.health_status}</td>
+<td>${item.advice}</td>
+<td>${item.predict_time}</td>
+</tr>`;
+    });
+    html+="</table>";
+    document.getElementById("history_box").innerHTML=html;
+}
 </script>
 </body>
 </html>
