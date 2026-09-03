@@ -2,311 +2,124 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>航空发动机RUL智能预测系统</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: "Microsoft YaHei", sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-        }
-        .header {
-            text-align: center;
-            color: #fff;
-            padding: 30px 0;
-        }
-        .header h1 { font-size: 32px; margin-bottom: 10px; }
-        .header p { font-size: 16px; opacity: 0.9; }
-        .card {
-            background: #fff;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        }
-        .card h2 {
-            font-size: 20px;
-            color: #1e3c72;
-            margin-bottom: 18px;
-            border-left: 4px solid #2a5298;
-            padding-left: 12px;
-        }
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-        .form-group { flex: 1; min-width: 200px; }
-        .form-group label {
-            display: block;
-            font-size: 14px;
-            color: #333;
-            margin-bottom: 6px;
-            font-weight: bold;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-        .btn {
-            padding: 10px 28px;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-        .btn-primary {
-            background: #2a5298;
-            color: #fff;
-        }
-        .btn-primary:hover { background: #1e3c72; }
-        .btn-success {
-            background: #28a745;
-            color: #fff;
-        }
-        .btn-success:hover { background: #1e7e34; }
-        .btn-warning {
-            background: #ffc107;
-            color: #333;
-        }
-        .result-box {
-            margin-top: 18px;
-            padding: 18px;
-            border-radius: 8px;
-            background: #f8f9fa;
-            border-left: 4px solid #28a745;
-            display: none;
-        }
-        .result-box.show { display: block; }
-        .result-item {
-            padding: 8px 0;
-            font-size: 15px;
-        }
-        .result-item span {
-            font-weight: bold;
-            color: #1e3c72;
-        }
-        .rul-value {
-            font-size: 36px;
-            color: #dc3545;
-            font-weight: bold;
-        }
-        .suggestion {
-            padding: 12px;
-            background: #fff3cd;
-            border-radius: 6px;
-            margin-top: 10px;
-            font-size: 15px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            padding: 10px 12px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-            font-size: 14px;
-        }
-        th {
-            background: #f1f3f5;
-            color: #1e3c72;
-            font-weight: bold;
-        }
-        tr:hover { background: #f8f9fa; }
-        .status-tag {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .status-good { background: #d4edda; color: #155724; }
-        .status-warn { background: #fff3cd; color: #856404; }
-        .status-bad { background: #f8d7da; color: #721c24; }
-        .footer {
-            text-align: center;
-            color: rgba(255,255,255,0.8);
-            padding: 20px;
-            font-size: 13px;
-        }
+        body{font-family:Microsoft YaHei;margin:20px;background:#e8f4ff;}
+        .box{background:#fff;padding:20px;border-radius:8px;margin-bottom:15px;box-shadow:0 1px 4px #ccc;}
+        input{padding:8px;width:260px;margin:6px 0;border:1px solid #aaa;border-radius:4px;}
+        button{padding:8px 16px;border:none;border-radius:4px;color:#fff;cursor:pointer;}
+        .btn-blue{background:#2b78e4;}
+        .btn-green{background:#28a745;}
+        .btn-yellow{background:#f0ad4e;color:#222;}
+        .tip{margin-top:8px;color:#226622;}
+        table{width:100%;border-collapse:collapse;margin-top:10px;}
+        th,td{border:1px solid #ccc;padding:8px;text-align:center;}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>航空发动机剩余寿命RUL智能预测系统</h1>
-            <p>基于LSTM深度学习 · 工业设备预测性运维 · C/S架构</p>
-        </div>
+<h1 style="text-align:center;">航空发动机剩余寿命RUL智能预测系统</h1>
 
-        <!-- 设备录入 -->
-        <div class="card">
-            <h2>1. 设备信息录入</h2>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>设备名称</label>
-                    <input type="text" id="equipName" placeholder="例如：航空发动机-001" value="航空发动机-001">
-                </div>
-                <div class="form-group">
-                    <label>设备型号</label>
-                    <input type="text" id="equipModel" placeholder="例如：CFM56" value="CFM56">
-                </div>
-            </div>
-            <button class="btn btn-primary" onclick="addDevice()">录入设备</button>
-            <div id="deviceResult" class="result-box">
-                <div class="result-item">设备录入成功，设备编号：<span id="newEquipId"></span></div>
-            </div>
-        </div>
-
-        <!-- RUL预测 -->
-        <div class="card">
-            <h2>2. 剩余寿命RUL智能预测</h2>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>设备编号</label>
-                    <input type="number" id="predictEquipId" placeholder="输入设备编号">
-                </div>
-            </div>
-            <button class="btn btn-success" onclick="predictRUL()">执行智能预测</button>
-            <div id="predictResult" class="result-box">
-                <div class="result-item">
-                    预测剩余使用寿命（RUL）：
-                    <span class="rul-value" id="rulValue"></span> 循环周期
-                </div>
-                <div class="result-item">归一化输出值：<span id="normValue"></span></div>
-                <div class="suggestion" id="suggestionText"></div>
-            </div>
-        </div>
-
-        <!-- 历史记录 -->
-        <div class="card">
-            <h2>3. 历史预测记录查询</h2>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>设备编号</label>
-                    <input type="number" id="queryEquipId" placeholder="输入设备编号查询">
-                </div>
-            </div>
-            <button class="btn btn-warning" onclick="queryHistory()">查询历史记录</button>
-            <div id="historyBox" style="margin-top:15px;">
-                <table id="historyTable">
-                    <thead>
-                        <tr>
-                            <th>记录ID</th>
-                            <th>设备名称</th>
-                            <th>预测RUL</th>
-                            <th>健康状态</th>
-                            <th>运维建议</th>
-                            <th>预测时间</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="footer">
-            制造智能技术课程设计 · 汇报人：朱行磊 · 学号：202412020228 · 指导教师：董旭斌
-        </div>
+<div class="box">
+    <h3>1.设备信息录入</h3>
+    <div>
+        <label>设备名称</label><br>
+        <input id="equip_name" placeholder="请输入设备名称"><br>
+        <label>设备型号</label><br>
+        <input id="equip_model" placeholder="请输入设备型号"><br>
+        <button id="btn_add" class="btn-blue">录入设备</button>
+        <div class="tip" id="add_tip"></div>
     </div>
+</div>
 
-    <script>
-        const API = 'http://127.0.0.1:5000';
+<div class="box">
+    <h3>2.剩余寿命RUL智能预测</h3>
+    <div>
+        <label>设备编号</label><br>
+        <input id="predict_device_id" placeholder="输入设备编号"><br>
+        <button id="btn_predict" class="btn-green">执行智能预测</button>
+        <div class="tip" id="predict_tip"></div>
+    </div>
+</div>
 
-        function addDevice() {
-            const name = document.getElementById('equipName').value;
-            const model = document.getElementById('equipModel').value;
-            fetch(API + '/api/add_device', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({equip_name: name, equip_model: model})
-            })
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('newEquipId').textContent = data.equip_id;
-                document.getElementById('deviceResult').classList.add('show');
-                document.getElementById('predictEquipId').value = data.equip_id;
-                document.getElementById('queryEquipId').value = data.equip_id;
-            })
-            .catch(err => alert('设备录入失败：' + err));
-        }
+<div class="box">
+    <h3>3.历史预测记录查询</h3>
+    <div>
+        <label>设备编号</label><br>
+        <input id="query_device_id" placeholder="输入设备编号(留空查全部)"><br>
+        <button id="btn_query" class="btn-yellow">查询历史记录</button>
+        <div id="table_wrap"></div>
+    </div>
+</div>
 
-        function predictRUL() {
-            const equipId = document.getElementById('predictEquipId').value;
-            if (!equipId) { alert('请先录入设备或输入设备编号'); return; }
-            // 生成模拟时序样本（实际项目替换为真实传感器数据）
-            const sample = [];
-            for (let i = 0; i < 30; i++) {
-                const row = [];
-                for (let j = 0; j < 21; j++) {
-                    row.push(Math.random() * 2 - 1);
-                }
-                sample.push(row);
-            }
-            fetch(API + '/api/predict_rul', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({equip_id: parseInt(equipId), sample: [sample]})
-            })
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('rulValue').textContent = data.predict_rul;
-                document.getElementById('normValue').textContent = data.predict_norm;
-                document.getElementById('suggestionText').textContent = '运维建议：' + data.suggestion;
-                document.getElementById('predictResult').classList.add('show');
-            })
-            .catch(err => alert('预测失败：' + err));
-        }
+<script>
+//录入设备
+document.querySelector("#btn_add").addEventListener("click",async ()=>{
+    const name=document.querySelector("#equip_name").value.trim();
+    const model=document.querySelector("#equip_model").value.trim();
+    const tip=document.querySelector("#add_tip");
+    if(!name){tip.innerText="请填写设备名称";return;}
+    const res=await fetch("/api/add_device",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({equip_name:name,equip_model:model})
+    });
+    const data=await res.json();
+    if(data.code===0){
+        tip.innerText=`设备录入成功，设备编号：${data.device_id}`;
+    }else{
+        tip.innerText=`录入失败：${data.msg}`;
+    }
+});
 
-        function queryHistory() {
-            const equipId = document.getElementById('queryEquipId').value;
-            if (!equipId) { alert('请输入设备编号'); return; }
-            fetch(API + '/api/get_history?equip_id=' + equipId)
-            .then(r => r.json())
-            .then(data => {
-                const tbody = document.getElementById('historyBody');
-                tbody.innerHTML = '';
-                if (data.data && data.data.length > 0) {
-                    data.data.forEach(item => {
-                        let statusClass = 'status-good';
-                        let statusText = '健康';
-                        if (item.predict_rul <= 30) {
-                            statusClass = 'status-bad';
-                            statusText = '需维护';
-                        } else if (item.predict_rul <= 80) {
-                            statusClass = 'status-warn';
-                            statusText = '预警';
-                        }
-                        const tr = document.createElement('tr');
-                        tr.innerHTML = `
-                            <td>${item.record_id}</td>
-                            <td>${item.equip_name}</td>
-                            <td>${item.predict_rul.toFixed(2)}</td>
-                            <td><span class="status-tag ${statusClass}">${statusText}</span></td>
-                            <td>${item.suggestion}</td>
-                            <td>${item.time}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-                } else {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;">暂无预测记录</td></tr>';
-                }
-            })
-            .catch(err => alert('查询失败：' + err));
-        }
-    </script>
+//执行预测
+document.querySelector("#btn_predict").addEventListener("click",async ()=>{
+    const devId=document.querySelector("#predict_device_id").value.trim();
+    const tip=document.querySelector("#predict_tip");
+    if(!devId){tip.innerText="请输入设备编号";return;}
+    const res=await fetch("/api/predict_rul",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({device_id:devId})
+    });
+    const data=await res.json();
+    if(data.code===0){
+        tip.innerText=`预测RUL：${data.data.pred_rul}，健康状态：${data.data.health_status}，运维建议：${data.data.advice}`;
+    }else{
+        tip.innerText=`预测失败：${data.msg}`;
+    }
+});
+
+//查询历史
+document.querySelector("#btn_query").addEventListener("click",async ()=>{
+    const devId=document.querySelector("#query_device_id").value.trim();
+    const wrap=document.querySelector("#table_wrap");
+    const res=await fetch("/api/query_history",{
+        method:"POST",
+        headers:{
+            "Content-Type":"application/json"
+        },
+        body:JSON.stringify({device_id:devId})
+    });
+    const data=await res.json();
+    if(data.code!==0){wrap.innerText=`查询失败：${data.msg}`;return;}
+    let html=`<table><tr><th>记录ID</th><th>设备名称</th><th>预测RUL</th><th>健康状态</th><th>运维建议</th><th>预测时间</th></tr>`;
+    for(let r of data.data){
+        html+=`<tr>
+            <td>${r.id}</td>
+            <td>${r.equip_name}</td>
+            <td>${r.pred_rul}</td>
+            <td>${r.health_status}</td>
+            <td>${r.advice}</td>
+            <td>${r.predict_time}</td>
+        </tr>`;
+    }
+    html+=`</table>`;
+    wrap.innerHTML=html;
+});
+</script>
 </body>
 </html>
