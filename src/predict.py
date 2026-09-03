@@ -1,34 +1,33 @@
 import torch
-import torch.nn as nn
 import numpy as np
-import os
+from train import SimpleRULModel
 
-window_size = 30
-feature_num = 21
-RUL_MAX = 130
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model_path = "../output/model.pth"
 
-class LstmRUL(nn.Module):
-    def __init__(self, input_size, hidden_size=64):
-        super(LstmRUL, self).__init__()
-        self.lstm = nn.LSTM(input_size, hidden_size, batch_first=True)
-        self.fc = nn.Linear(hidden_size, 1)
-    def forward(self, x):
-        out, _ = self.lstm(x)
-        last_step = out[:, -1, :]
-        return self.fc(last_step)
-
-model = LstmRUL(feature_num)
-model.load_state_dict(torch.load("../output/model.pth"))
+model = SimpleRULModel().to(device)
+model.load_state_dict(torch.load(model_path, map_location=device))
 model.eval()
 
-data = np.load("../data/processed_train.npz")
-x_test_sample = data["x_train"][0:1]
+def get_rul_pred():
+    # 课设演示：模拟输入一段时序，输出RUL
+    dummy_seq = np.random.randn(1,30,21).astype(np.float32)
+    x = torch.from_numpy(dummy_seq).to(device)
+    with torch.no_grad():
+        pred = model(x).item()
+    rul = np.clip(pred,25,120)
 
-x_tensor = torch.from_numpy(x_test_sample).float()
+    if rul < 40:
+        status = "故障风险高"
+        advice = "尽快停机检修"
+    elif 40 <= rul <80:
+        status = "状态一般"
+        advice = "加强巡检"
+    else:
+        status = "状态良好"
+        advice = "正常运行"
+    return {"rul":round(rul,1), "health_status":status, "advice":advice}
 
-with torch.no_grad():
-    pred_norm = model(x_tensor)
-
-pred_rul = pred_norm.item() * RUL_MAX
-print(f"归一化输出：{pred_norm.item():.4f}")
-print(f"预测剩余寿命RUL：{pred_rul:.1f}")
+if __name__ == "__main__":
+    res = get_rul_pred()
+    print(res)
